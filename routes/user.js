@@ -1,14 +1,15 @@
 const express = require('express');
-const app = express();
-const port = 8082;
+const session = require('express-session');
 
-app.use(express.static('public'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const router = express.Router();
+
+router.use(express.static('public'));
+router.use(express.json());
+router.use(express.urlencoded({ extended: true }));
 
 let db = new Map();
 
-app.get('/', (req, res) => {
+router.route('/').get((req, res) => {
   res.send(`
         <!DOCTYPE html>
         <html lang="kr">
@@ -29,8 +30,10 @@ app.get('/', (req, res) => {
     `);
 });
 
-app.get('/login', (req, res) => {
-  res.send(`
+router
+  .route('/login')
+  .get((req, res) => {
+    res.send(`
           <!DOCTYPE html>
           <html lang="kr">
           <head>
@@ -52,19 +55,32 @@ app.get('/login', (req, res) => {
           </body>
           </html>
       `);
+  })
+  .post((req, res) => {
+    const { id, pwd } = req.body;
+    if (db.get(id) === undefined) res.status(401).json({ message: '회원 정보를 찾을 수 없습니다.' });
+    else {
+      if (db.get(id).pwd !== pwd) res.status(401).json({ message: '잘못된 비밀번호 입니다.' });
+      else {
+        req.session.userId = id;
+        res.status(200).json({ message: '로그인에 성공하였습니다.' });
+      }
+    }
+  });
+
+router.route('/logout').post((req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ message: '로그아웃 중 오류가 발생했습니다.' });
+    }
+    res.status(200).json({ message: '로그아웃되었습니다.' });
+  });
 });
 
-app.post('/login', (req, res) => {
-  const { id, pwd } = req.body;
-  if (db.get(id) === undefined) res.status(401).json({ message: '회원 정보를 찾을 수 없습니다.' });
-  else {
-    if (db.get(id).pwd !== pwd) res.status(401).json({ message: '잘못된 비밀번호 입니다.' });
-    else res.status(200).json({ message: '로그인에 성공하였습니다.' });
-  }
-});
-
-app.get('/register', (req, res) => {
-  res.send(`
+router
+  .route('/register')
+  .get((req, res) => {
+    res.send(`
         <!DOCTYPE html>
         <html lang="kr">
         <head>
@@ -87,22 +103,23 @@ app.get('/register', (req, res) => {
         </body>
         </html>
     `);
-});
+  })
+  .post((req, res) => {
+    const { id, pwd, name } = req.body;
+    if (db.get(id) !== undefined) res.status(401).json({ message: '중복되는 아이디가 존재합니다.' });
+    else {
+      db.set(id, { id, pwd, name });
+      res.status(200).json({ message: '회원가입에 성공하였습니다.' });
+    }
+  });
 
-app.post('/register', (req, res) => {
-  const { id, pwd, name } = req.body;
-  if (db.get(id) !== undefined) res.status(401).json({ message: '중복되는 아이디가 존재합니다.' });
-  else {
-    db.set(id, { id, pwd, name });
-    res.status(200).json({ message: '회원가입에 성공하였습니다.' });
-  }
-});
-
-app.get('/user/:id', (req, res) => {
-  const id = req.params.id;
-  const user = db.get(id);
-  if (user !== undefined) {
-    res.send(`
+router
+  .route('/user/:id')
+  .get((req, res) => {
+    const id = req.params.id;
+    const user = db.get(id);
+    if (user !== undefined) {
+      res.send(`
         <!DOCTYPE html>
         <html lang="kr">
         <head>
@@ -110,6 +127,7 @@ app.get('/user/:id', (req, res) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <link rel="stylesheet" href="/css/style.css" />
             <script src="/js/deleteUser.js"></script>
+            <script src="/js/postLogout.js"></script>
             <title>사용자 정보</title>
         </head>
         <body>
@@ -117,7 +135,8 @@ app.get('/user/:id', (req, res) => {
                 <h1>사용자 정보</h1>
                 <p>아이디: ${user.id}</p>
                 <p>이름: ${user.name}</p>
-                <button onclick="location.href='/'">로그아웃</button>
+                <button onclick="postLogout(event)">로그아웃</button>
+                <button onclick="window.location.href='/channel'">채널 관리</button>
                 <button onclick="confirmDelete('${user.id}')">회원 탈퇴</button>
             </div>
             <script>
@@ -131,17 +150,16 @@ app.get('/user/:id', (req, res) => {
         </body>
         </html>
       `);
-  } else {
+    } else {
+      res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    }
+  })
+  .delete((req, res) => {
+    const id = req.params.id;
+    if (db.delete(id)) {
+      return res.status(200).json({ message: '회원 탈퇴가 완료되었습니다.' });
+    }
     res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-  }
-});
+  });
 
-app.delete('/user/:id', (req, res) => {
-  const id = req.params.id;
-  if (db.delete(id)) {
-    return res.status(200).json({ message: '회원 탈퇴가 완료되었습니다.' });
-  }
-  res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-});
-
-app.listen(port, () => console.log(`서버열림 : http://localhost:${port}`));
+module.exports = router;
