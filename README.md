@@ -37,6 +37,11 @@
     - post 메소드 이용
     - req : id, pwd
     - res : 메세지
+  - 로그아웃
+    - /logout
+    - /post 메소드 이용
+    - req : X
+    - res : 메세지
   - 회원가입
     - /register
     - post 메소드 이용
