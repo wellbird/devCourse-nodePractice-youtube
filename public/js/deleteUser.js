@@ -13,7 +13,7 @@ function deleteUser(id) {
     })
     .then((data) => {
       alert(data.message);
-      location.href = '/';
+      window.location.href = '/';
     })
     .catch((error) => {
       console.log(error);
