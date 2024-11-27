@@ -80,6 +80,11 @@
     - req : title
     - res : 메세지
 
+### 데이터베이스 설계
+
+![diagram](https://github.com/user-attachments/assets/d525ab0e-4c04-49c2-be79-5fc0200099d7)
+
+
 ### 문제 및 해결방안
 - user에서 로그인 한 정보를 channel로 넘겨주는 방법
   - express-session 패키지를 이용하여 유저 정보를 세션에 저장
