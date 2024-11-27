@@ -74,3 +74,7 @@
     - delete 메소드 이용
     - req : title
     - res : 메세지
+
+### 문제 및 해결방안
+- user에서 로그인 한 정보를 channel로 넘겨주는 방법
+  - express-session 패키지를 이용하여 유저 정보를 세션에 저장
