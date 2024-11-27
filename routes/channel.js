@@ -67,6 +67,7 @@ router.route('/').get((req, res) => {
     </html>
   `);
 });
+
 router
   .route('/create')
   .get((req, res) => {
@@ -94,7 +95,7 @@ router
         <body>
           <div class="container">
             <h1>채널 생성</h1>
-            <form action="/channel/create" method="POST" onsubmit="return postChannel(event)">
+            <form action="/channel/create" onsubmit="return postChannel(event)">
               <input type="text" name="title" id="title" placeholder="채널 제목" required />
               <button type="submit">생성</button>
             </form>
@@ -124,6 +125,91 @@ router
     db.set(title, newChannel);
 
     res.status(200).json({ message: '채널이 생성되었습니다.' });
+  });
+
+router
+  .route('/edit/:title')
+  .get((req, res) => {
+    const userId = req.session.userId;
+
+    if (!userId) {
+      return res.status(401).send(`
+        <script>
+          alert("로그인 상태가 아닙니다.");
+          window.location.href = "/login";
+        </script>
+      `);
+    }
+
+    const title = req.params.title;
+    const channel = db.get(title);
+
+    if (channel.userId !== userId) {
+      return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
+    }
+    if (!channel) {
+      return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
+    }
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="kr">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <link rel="stylesheet" href="/css/style.css" />
+          <script src="/js/putChannel.js"></script>
+          <title>채널 수정</title>
+        </head>
+        <body>
+          <div class="container">
+            <h1>채널 수정</h1>
+            <form onsubmit="return putChannel(event, '${channel.title}')">
+              <input type="text" name="title" id="title" value="${channel.title}" required />
+              <button type="submit">수정</button>
+            </form>
+          </div>
+        </body>
+      </html>
+    `);
+  })
+  .put((req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).send(`
+        <script>
+          alert("로그인 정보를 찾을 수 없습니다.");
+          window.location.href = "/login";
+        </script>
+      `);
+    }
+
+    const title = req.params.title;
+    const channel = db.get(title);
+
+    if (channel.userId !== userId) {
+      return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
+    }
+    if (!channel) {
+      return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
+    }
+
+    const { newTitle } = req.body;
+
+    if (db.has(newTitle)) {
+      return res.status(400).json({ message: '중복된 채널명입니다.' });
+    }
+
+    db.delete(title);
+    const updatedChannel = {
+      title: newTitle,
+      userId: userId,
+      videoCount: channel.videoCount,
+      subscribeCount: channel.subscribeCount,
+    };
+    db.set(newTitle, updatedChannel);
+
+    res.status(200).json({ message: '채널이 수정되었습니다.' });
   });
 
 router.route('/delete/:title').delete((req, res) => {
