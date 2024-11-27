@@ -62,15 +62,15 @@
   - 채널 생성
     - /channel/create
     - post 메소드 이용
-    - req : channelTitle
+    - req : title
     - res : 메세지
   - 채널 수정
-    - /channel/edit/:id
+    - /channel/edit/:title
     - put 메소드 이용
-    - req : id, channelTitle
+    - req : title
     - res : 메세지
   - 채널 삭제
-    - /channel/delete/:id
+    - /channel/delete/:title
     - delete 메소드 이용
-    - req : id
+    - req : title
     - res : 메세지
