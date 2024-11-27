@@ -60,24 +60,24 @@
 
 - 채널
   - 채널 조회
-    - /user/:id/channel
+    - /channel
     - get 메소드 이용
-    - req : X
+    - req : id
     - res : 메세지
   - 채널 생성
-    - /user/:id/channel/create
+    - /channel/create
     - post 메소드 이용
-    - req : title
+    - req : id, title
     - res : 메세지
   - 채널 수정
     - /channel/edit/:title
     - put 메소드 이용
-    - req : title
+    - req : id, title
     - res : 메세지
   - 채널 삭제
     - /channel/delete/:title
     - delete 메소드 이용
-    - req : title
+    - req : id, title
     - res : 메세지
 
 ### 데이터베이스 설계
