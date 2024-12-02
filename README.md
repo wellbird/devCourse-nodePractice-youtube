@@ -84,6 +84,14 @@
 
 ![diagram](https://github.com/user-attachments/assets/d525ab0e-4c04-49c2-be79-5fc0200099d7)
 
+### 데이터베이스 생성
+- users 테이블
+
+  ![tableUsers](https://github.com/user-attachments/assets/b85c63ea-6354-44e5-8e3f-fe55da510566)
+
+- channels 테이블
+
+  ![tableChannels](https://github.com/user-attachments/assets/467c3102-bc3d-46a9-9d11-a9d63ebd4138)
 
 ### 문제 및 해결방안
 - user에서 로그인 한 정보를 channel로 넘겨주는 방법
