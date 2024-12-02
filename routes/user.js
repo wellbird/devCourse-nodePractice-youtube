@@ -57,7 +57,8 @@ router
   .post((req, res) => {
     const { id, pwd } = req.body;
 
-    conn.query(`SELECT * FROM users WHERE user_id = ?`, id, (err, results, fields) => {
+    const sql = 'SELECT * FROM users WHERE user_id = ?';
+    conn.query(sql, id, (err, results, fields) => {
       if (err) {
         return res.status(404).json({ message: '알 수 없는 에러가 발생하였습니다.' });
       } else {
@@ -111,7 +112,8 @@ router
   .post((req, res) => {
     const { id, pwd, name } = req.body;
 
-    conn.query(`INSERT INTO users (user_id, pwd, name) VALUES (?, ?, ?)`, [id, pwd, name], (err, results, fields) => {
+    const sql = 'INSERT INTO users (user_id, pwd, name) VALUES (?, ?, ?)';
+    conn.query(sql, [id, pwd, name], (err, results, fields) => {
       if (err) {
         return res.status(401).json({ message: '중복되는 아이디가 존재합니다.' });
       } else {
@@ -124,7 +126,8 @@ router
   .route('/user/:id')
   .get((req, res) => {
     const id = req.params.id;
-    conn.query(`SELECT * FROM users WHERE user_id = ?`, id, (err, results, fields) => {
+    const sql = 'SELECT * FROM users WHERE user_id = ?';
+    conn.query(sql, id, (err, results, fields) => {
       if (err) {
         return res.status(500).json({ message: '알 수 없는 오류가 발생하였습니다.' });
       } else {
@@ -166,7 +169,8 @@ router
   })
   .delete((req, res) => {
     const id = req.params.id;
-    conn.query(`DELETE FROM users WHERE user_id = ?`, id, (err, results, fields) => {
+    const sql = 'DELETE FROM users WHERE user_id = ?';
+    conn.query(sql, id, (err, results, fields) => {
       if (err) {
         return res.status(404).json({ message: '알 수 없는 에러가 발생하였습니다.' });
       } else {
