@@ -1,7 +1,8 @@
 const express = require('express');
+const conn = require('../mariaDB');
+const { body, param, validationResult } = require('express-validator');
 
 const router = express.Router();
-const conn = require('../mariaDB');
 
 router.use(express.static('public'));
 router.use(express.json());
@@ -54,24 +55,34 @@ router
           </html>
       `);
   })
-  .post((req, res) => {
-    const { id, pwd } = req.body;
-
-    const sql = 'SELECT * FROM users WHERE user_id = ?';
-    conn.query(sql, id, (err, results, fields) => {
-      if (err) {
-        return res.status(404).json({ message: '알 수 없는 에러가 발생하였습니다.' });
-      } else {
-        const user = results[0];
-        if (!user || pwd !== user.pwd)
-          return res.status(401).json({ message: '아이디 또는 비밀번호가 잘못되었습니다.' });
-        else {
-          req.session.userId = id;
-          return res.status(200).json({ message: '로그인에 성공하였습니다.' });
-        }
+  .post(
+    [
+      body('id').notEmpty().isString().withMessage('잘못된 입력입니다.'),
+      body('pwd').notEmpty().withMessage('비밀번호를 입력해주세요.'),
+    ],
+    (req, res) => {
+      const err = validationResult(req);
+      if (!err.isEmpty()) {
+        return res.status(404).json({ message: err.message });
       }
-    });
-  });
+      const { id, pwd } = req.body;
+
+      const sql = 'SELECT * FROM users WHERE user_id = ?';
+      conn.query(sql, id, (err, results, fields) => {
+        if (err) {
+          return res.status(404).json({ message: '알 수 없는 에러가 발생하였습니다.' });
+        } else {
+          const user = results[0];
+          if (!user || pwd !== user.pwd)
+            return res.status(401).json({ message: '아이디 또는 비밀번호가 잘못되었습니다.' });
+          else {
+            req.session.userId = id;
+            return res.status(200).json({ message: '로그인에 성공하였습니다.' });
+          }
+        }
+      });
+    }
+  );
 
 router.route('/logout').post((req, res) => {
   req.session.destroy((err) => {
@@ -109,22 +120,33 @@ router
         </html>
     `);
   })
-  .post((req, res) => {
-    const { id, pwd, name } = req.body;
+  .post(
+    [
+      body('id').notEmpty().isString().withMessage('잘못된 아이디 입력입니다.'),
+      body('pwd').notEmpty().withMessage('잘못된 비밀번호 입력입니다.'),
+      body('name').notEmpty().isString().withMessage('잘못된 이름 입력입니다.'),
+    ],
+    (req, res) => {
+      const err = validationResult(req);
+      if (!err.isEmpty()) return res.status(404).json({ message: err.message });
+      const { id, pwd, name } = req.body;
 
-    const sql = 'INSERT INTO users (user_id, pwd, name) VALUES (?, ?, ?)';
-    conn.query(sql, [id, pwd, name], (err, results, fields) => {
-      if (err) {
-        return res.status(401).json({ message: '중복되는 아이디가 존재합니다.' });
-      } else {
-        return res.status(200).json({ message: '회원가입에 성공하였습니다.' });
-      }
-    });
-  });
+      const sql = 'INSERT INTO users (user_id, pwd, name) VALUES (?, ?, ?)';
+      conn.query(sql, [id, pwd, name], (err, results, fields) => {
+        if (err) {
+          return res.status(401).json({ message: '중복되는 아이디가 존재합니다.' });
+        } else {
+          return res.status(200).json({ message: '회원가입에 성공하였습니다.' });
+        }
+      });
+    }
+  );
 
 router
   .route('/user/:id')
-  .get((req, res) => {
+  .get(param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
     const id = req.params.id;
     const sql = 'SELECT * FROM users WHERE user_id = ?';
     conn.query(sql, id, (err, results, fields) => {
@@ -167,7 +189,9 @@ router
       }
     });
   })
-  .delete((req, res) => {
+  .delete(param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
     const id = req.params.id;
     const sql = 'DELETE FROM users WHERE user_id = ?';
     conn.query(sql, id, (err, results, fields) => {

@@ -1,5 +1,6 @@
 const express = require('express');
 const conn = require('../mariaDB');
+const { body, param, validationResult } = require('express-validator');
 
 const router = express.Router();
 
@@ -108,7 +109,9 @@ router
       </html>
     `);
   })
-  .post((req, res) => {
+  .post(body('title').notEmpty().isString().withMessage('채널명을 입력해주세요.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
     const userId = req.session.userId;
     if (!userId) {
       return res.status(401).send(`
@@ -133,7 +136,10 @@ router
 
 router
   .route('/edit/:title')
-  .get((req, res) => {
+  .get(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+
     const userId = req.session.userId;
 
     if (!userId) {
@@ -178,7 +184,10 @@ router
       }
     });
   })
-  .put((req, res) => {
+  .put(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+
     const userId = req.session.userId;
     if (!userId) {
       return res.status(401).send(`
@@ -205,6 +214,7 @@ router
           if (err) {
             return res.status(401).json({ message: '중복된 채널명입니다.' });
           } else {
+            if (results.affectedRows === 0) return res.status(401).json({ message: '수정에 실패하였습니다.' });
             return res.status(200).json({ message: '채널이 수정되었습니다.' });
           }
         });
@@ -212,41 +222,45 @@ router
     });
   });
 
-router.route('/delete/:title').delete((req, res) => {
-  const userId = req.session.userId;
-  if (!userId) {
-    return res.status(401).send(`
+router
+  .route('/delete/:title')
+  .delete(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
+    const err = validationResult(req);
+    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).send(`
         <script>
             alert("로그인 정보를 찾을 수 없습니다.");
             window.location.href = "/login";
         </script>
       `);
-  }
-
-  const title = req.params.title;
-
-  const getSql = 'SELECT * FROM channels WHERE title = ?';
-  const deleteSql = 'DELETE FROM channels WHERE title = ?';
-
-  conn.query(getSql, title, (err, results, fields) => {
-    if (err) {
-      return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
-    } else {
-      const channelInfo = results[0];
-      if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 삭제 권한이 없습니다.' });
-      return conn.query(deleteSql, title, (err, results, fields) => {
-        if (err) {
-          return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
-        } else {
-          if (results.affectedRows === 1) {
-            return res.status(200).json({ message: '채널 삭제가 완료되었습니다.' });
-          } else {
-            return res.status(404).json({ message: '존재하지 않는 채널입니다.' });
-          }
-        }
-      });
     }
+
+    const title = req.params.title;
+
+    const getSql = 'SELECT * FROM channels WHERE title = ?';
+    const deleteSql = 'DELETE FROM channels WHERE title = ?';
+
+    conn.query(getSql, title, (err, results, fields) => {
+      if (err) {
+        return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
+      } else {
+        const channelInfo = results[0];
+        if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 삭제 권한이 없습니다.' });
+        return conn.query(deleteSql, title, (err, results, fields) => {
+          if (err) {
+            return res.status(404).json({ message: '채널을 찾을 수 없습니다.' });
+          } else {
+            if (results.affectedRows === 1) {
+              return res.status(200).json({ message: '채널 삭제가 완료되었습니다.' });
+            } else {
+              return res.status(404).json({ message: '존재하지 않는 채널입니다.' });
+            }
+          }
+        });
+      }
+    });
   });
-});
 
 module.exports = router;
