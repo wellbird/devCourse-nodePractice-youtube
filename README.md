@@ -1,5 +1,11 @@
 # devCourse-nodePractice-youtube
 ## 데브코스 유튜브 실습
+### 실행 방법
+1. npm install 
+2. .env 파일 생성 후 PRIVATE_KEY 설정
+3. docker를 이용하여 MySql(MariaDB) 실행(3306 포트)
+4. app.js 실행(node ./app.js)
+
 ### 화면 설계
 - 회원
   - 로그인
