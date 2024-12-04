@@ -1,6 +1,7 @@
 function deleteChannel(title) {
   fetch('/channel/delete/' + title, {
     method: 'DELETE',
+    credentials: 'include',
   })
     .then((res) => {
       if (!res.ok) {

@@ -5,6 +5,7 @@ function postChannel(event) {
 
   fetch('/channel/create', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

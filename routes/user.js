@@ -1,7 +1,10 @@
 const express = require('express');
 const conn = require('../mariaDB');
 const { body, param, validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 
+dotenv.config();
 const router = express.Router();
 
 router.use(express.static('public'));
@@ -77,9 +80,11 @@ router
         } else {
           const user = results[0];
           if (!user || pwd !== user.pwd)
-            return res.status(401).json({ message: '아이디 또는 비밀번호가 잘못되었습니다.' });
+            return res.status(403).json({ message: '아이디 또는 비밀번호가 잘못되었습니다.' });
           else {
-            req.session.userId = id;
+            const token = jwt.sign({ userId: id }, process.env.PRIVATE_KEY, { expiresIn: '30m', issuer: 'JW' });
+
+            res.cookie('token', token, { httpOnly: true, secure: false, sameSite: 'Lax' });
             return res.status(200).json({ message: '로그인에 성공하였습니다.' });
           }
         }
@@ -88,12 +93,8 @@ router
   );
 
 router.route('/logout').post((req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: '로그아웃 중 오류가 발생했습니다.' });
-    }
-    res.status(200).json({ message: '로그아웃되었습니다.' });
-  });
+  res.clearCookie('token');
+  res.status(200).json({ message: '로그아웃되었습니다.' });
 });
 
 router
@@ -194,15 +195,11 @@ router
     const sql = 'DELETE FROM users WHERE user_id = ?';
     conn.query(sql, id, (err, results, fields) => {
       if (err) {
-        return res.status(404).json({ message: '알 수 없는 에러가 발생하였습니다.' });
+        return res.status(404).json({ message: '한 개 이상의 채널을 보유중입니다.' });
       } else {
         if (results.affectedRows === 1) {
-          req.session.destroy((err) => {
-            if (err) {
-              return res.status(500).json({ message: '회원 탈퇴 중 오류가 발생했습니다.' });
-            }
-            return res.status(200).json({ message: '회원 탈퇴가 완료되었습니다.' });
-          });
+          res.clearCookie('token');
+          return res.status(200).json({ message: '회원 탈퇴가 완료되었습니다.' });
         } else {
           return res.status(404).json({ message: '존재하지 않는 사용자입니다.' });
         }

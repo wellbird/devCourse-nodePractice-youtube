@@ -5,6 +5,7 @@ function putChannel(event, title) {
 
   fetch('/channel/edit/' + title, {
     method: 'PUT',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

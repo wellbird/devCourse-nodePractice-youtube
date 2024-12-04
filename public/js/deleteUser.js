@@ -1,6 +1,7 @@
 function deleteUser(id) {
   fetch('/user/' + id, {
     method: 'DELETE',
+    credentials: 'include',
   })
     .then((res) => {
       if (!res.ok) {

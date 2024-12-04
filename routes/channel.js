@@ -1,7 +1,10 @@
 const express = require('express');
 const conn = require('../mariaDB');
 const { body, param, validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
 
+dotenv.config();
 const router = express.Router();
 
 router.use(express.static('public'));
@@ -14,16 +17,34 @@ const validate = (req, res, next) => {
   return res.status(404).json({ message: err.message });
 };
 
-router.route('/').get((req, res) => {
-  const userId = req.session.userId;
-  if (!userId) {
+const authenticateJWT = (req, res, next) => {
+  const token = req.cookies.token;
+
+  if (!token) {
     return res.status(401).send(`
-        <script>
-            alert("로그인 정보를 찾을 수 없습니다.");
-            window.location.href = "/login";
-        </script>
-      `);
+      <script>
+          alert("로그인 정보를 찾을 수 없습니다.");
+          window.location.href = "/login";
+      </script>
+    `);
   }
+
+  jwt.verify(token, process.env.PRIVATE_KEY, (err, user) => {
+    if (err) {
+      return res.status(403).send(`
+      <script>
+          alert("로그인 정보가 유효하지 않습니다.");
+          window.location.href = "/login";
+      </script>
+      `);
+    }
+    req.userId = user.userId;
+    next();
+  });
+};
+
+router.route('').get(authenticateJWT, (req, res) => {
+  const userId = req.userId;
 
   const sql = 'SELECT * FROM channels WHERE user_id = ?';
   conn.query(sql, userId, (err, results, fields) => {
@@ -81,18 +102,7 @@ router.route('/').get((req, res) => {
 
 router
   .route('/create')
-  .get((req, res) => {
-    const userId = req.session.userId;
-
-    if (!userId) {
-      return res.status(401).send(`
-        <script>
-            alert("로그인 상태가 아닙니다.");
-            window.location.href = "/login";
-        </script>
-      `);
-    }
-
+  .get(authenticateJWT, (req, res) => {
     res.send(`
       <!DOCTYPE html>
       <html lang="kr">
@@ -115,53 +125,43 @@ router
       </html>
     `);
   })
-  .post([body('title').notEmpty().isString().withMessage('채널명을 입력해주세요.'), validate], (req, res, next) => {
-    const userId = req.session.userId;
-    if (!userId) {
-      return res.status(401).send(`
-        <script>
-            alert("로그인 정보를 찾을 수 없습니다.");
-            window.location.href = "/login";
-        </script>
-        `);
+  .post(
+    [body('title').notEmpty().isString().withMessage('채널명을 입력해주세요.'), validate],
+    authenticateJWT,
+    (req, res, next) => {
+      const userId = req.userId;
+
+      const { title } = req.body;
+
+      const sql = 'INSERT INTO channels (title, user_id) VALUES (?, ?)';
+      conn.query(sql, [title, userId], (err, results, fields) => {
+        if (err) {
+          return res.status(401).json({ message: '중복된 채널명입니다.' });
+        } else {
+          return res.status(200).json({ message: '채널이 생성되었습니다.' });
+        }
+      });
     }
-
-    const { title } = req.body;
-
-    const sql = 'INSERT INTO channels (title, user_id) VALUES (?, ?)';
-    conn.query(sql, [title, userId], (err, results, fields) => {
-      if (err) {
-        return res.status(401).json({ message: '중복된 채널명입니다.' });
-      } else {
-        return res.status(200).json({ message: '채널이 생성되었습니다.' });
-      }
-    });
-  });
+  );
 
 router
   .route('/edit/:title')
-  .get([param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate], (req, res, next) => {
-    const userId = req.session.userId;
+  .get(
+    [param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate],
+    authenticateJWT,
+    (req, res, next) => {
+      const userId = req.userId;
 
-    if (!userId) {
-      return res.status(401).send(`
-        <script>
-          alert("로그인 상태가 아닙니다.");
-          window.location.href = "/login";
-        </script>
-      `);
-    }
+      const title = req.params.title;
 
-    const title = req.params.title;
-
-    const sql = 'SELECT * FROM channels WHERE title = ?';
-    conn.query(sql, title, (err, results, fields) => {
-      if (err) {
-        return res.status(404).json({ message: '채널 정보를 찾을 수 없습니다.' });
-      } else {
-        const channelInfo = results[0];
-        if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
-        return res.send(`
+      const sql = 'SELECT * FROM channels WHERE title = ?';
+      conn.query(sql, title, (err, results, fields) => {
+        if (err) {
+          return res.status(404).json({ message: '채널 정보를 찾을 수 없습니다.' });
+        } else {
+          const channelInfo = results[0];
+          if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
+          return res.send(`
           <!DOCTYPE html>
           <html lang="kr">
             <head>
@@ -182,58 +182,47 @@ router
             </body>
           </html>
         `);
-      }
-    });
-  })
-  .put([param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate], (req, res, next) => {
-    const userId = req.session.userId;
-    if (!userId) {
-      return res.status(401).send(`
-        <script>
-          alert("로그인 정보를 찾을 수 없습니다.");
-          window.location.href = "/login";
-        </script>
-      `);
+        }
+      });
     }
+  )
+  .put(
+    [param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate],
+    authenticateJWT,
+    (req, res, next) => {
+      const userId = req.userId;
 
-    const title = req.params.title;
+      const title = req.params.title;
 
-    const getSql = 'SELECT * FROM channels WHERE title = ?';
-    const updateSql = 'UPDATE channels SET title = ? WHERE title = ?';
+      const getSql = 'SELECT * FROM channels WHERE title = ?';
+      const updateSql = 'UPDATE channels SET title = ? WHERE title = ?';
 
-    conn.query(getSql, title, (err, results, fields) => {
-      if (err) {
-        return res.status(404).json({ message: '채널 정보를 찾을 수 없습니다.' });
-      } else {
-        const channelInfo = results[0];
-        if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
-        const { newTitle } = req.body;
-        return conn.query(updateSql, [newTitle, title], (err, results, fields) => {
-          if (err) {
-            return res.status(401).json({ message: '중복된 채널명입니다.' });
-          } else {
-            if (results.affectedRows === 0) return res.status(401).json({ message: '수정에 실패하였습니다.' });
-            return res.status(200).json({ message: '채널이 수정되었습니다.' });
-          }
-        });
-      }
-    });
-  });
+      conn.query(getSql, title, (err, results, fields) => {
+        if (err) {
+          return res.status(404).json({ message: '채널 정보를 찾을 수 없습니다.' });
+        } else {
+          const channelInfo = results[0];
+          if (userId !== channelInfo.user_id) return res.status(404).json({ message: '채널 수정 권한이 없습니다.' });
+          const { newTitle } = req.body;
+          return conn.query(updateSql, [newTitle, title], (err, results, fields) => {
+            if (err) {
+              return res.status(401).json({ message: '중복된 채널명입니다.' });
+            } else {
+              if (results.affectedRows === 0) return res.status(401).json({ message: '수정에 실패하였습니다.' });
+              return res.status(200).json({ message: '채널이 수정되었습니다.' });
+            }
+          });
+        }
+      });
+    }
+  );
 
 router
   .route('/delete/:title')
-  .delete(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
+  .delete(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), authenticateJWT, (req, res) => {
     const err = validationResult(req);
     if (!err.isEmpty()) res.status(401).json({ message: err.msg });
-    const userId = req.session.userId;
-    if (!userId) {
-      return res.status(401).send(`
-        <script>
-            alert("로그인 정보를 찾을 수 없습니다.");
-            window.location.href = "/login";
-        </script>
-      `);
-    }
+    const userId = req.userId;
 
     const title = req.params.title;
 

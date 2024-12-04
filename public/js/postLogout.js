@@ -3,6 +3,7 @@ function postLogout(event) {
 
   fetch(`/logout`, {
     method: 'POST',
+    credentials: 'include',
   })
     .then((res) => {
       if (!res.ok) {
