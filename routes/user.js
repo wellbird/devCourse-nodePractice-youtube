@@ -8,6 +8,12 @@ router.use(express.static('public'));
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+const validate = (req, res, next) => {
+  const err = validationResult(req);
+  if (err.isEmpty()) return next();
+  return res.status(404).json({ message: err.message });
+};
+
 router.route('/').get((req, res) => {
   res.send(`
         <!DOCTYPE html>
@@ -59,12 +65,9 @@ router
     [
       body('id').notEmpty().isString().withMessage('잘못된 입력입니다.'),
       body('pwd').notEmpty().withMessage('비밀번호를 입력해주세요.'),
+      validate,
     ],
-    (req, res) => {
-      const err = validationResult(req);
-      if (!err.isEmpty()) {
-        return res.status(404).json({ message: err.message });
-      }
+    (req, res, next) => {
       const { id, pwd } = req.body;
 
       const sql = 'SELECT * FROM users WHERE user_id = ?';
@@ -125,10 +128,9 @@ router
       body('id').notEmpty().isString().withMessage('잘못된 아이디 입력입니다.'),
       body('pwd').notEmpty().withMessage('잘못된 비밀번호 입력입니다.'),
       body('name').notEmpty().isString().withMessage('잘못된 이름 입력입니다.'),
+      validate,
     ],
-    (req, res) => {
-      const err = validationResult(req);
-      if (!err.isEmpty()) return res.status(404).json({ message: err.message });
+    (req, res, next) => {
       const { id, pwd, name } = req.body;
 
       const sql = 'INSERT INTO users (user_id, pwd, name) VALUES (?, ?, ?)';
@@ -144,9 +146,7 @@ router
 
 router
   .route('/user/:id')
-  .get(param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), (req, res) => {
-    const err = validationResult(req);
-    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+  .get([param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), validate], (req, res, next) => {
     const id = req.params.id;
     const sql = 'SELECT * FROM users WHERE user_id = ?';
     conn.query(sql, id, (err, results, fields) => {
@@ -189,9 +189,7 @@ router
       }
     });
   })
-  .delete(param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), (req, res) => {
-    const err = validationResult(req);
-    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+  .delete([param('id').notEmpty().isString().withMessage('잘못된 아이디 정보입니다.'), validate], (req, res, next) => {
     const id = req.params.id;
     const sql = 'DELETE FROM users WHERE user_id = ?';
     conn.query(sql, id, (err, results, fields) => {

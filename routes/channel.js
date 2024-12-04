@@ -8,6 +8,12 @@ router.use(express.static('public'));
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
+const validate = (req, res, next) => {
+  const err = validationResult(req);
+  if (err.isEmpty()) return next();
+  return res.status(404).json({ message: err.message });
+};
+
 router.route('/').get((req, res) => {
   const userId = req.session.userId;
   if (!userId) {
@@ -109,9 +115,7 @@ router
       </html>
     `);
   })
-  .post(body('title').notEmpty().isString().withMessage('채널명을 입력해주세요.'), (req, res) => {
-    const err = validationResult(req);
-    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
+  .post([body('title').notEmpty().isString().withMessage('채널명을 입력해주세요.'), validate], (req, res, next) => {
     const userId = req.session.userId;
     if (!userId) {
       return res.status(401).send(`
@@ -136,10 +140,7 @@ router
 
 router
   .route('/edit/:title')
-  .get(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
-    const err = validationResult(req);
-    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
-
+  .get([param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate], (req, res, next) => {
     const userId = req.session.userId;
 
     if (!userId) {
@@ -184,10 +185,7 @@ router
       }
     });
   })
-  .put(param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), (req, res) => {
-    const err = validationResult(req);
-    if (!err.isEmpty()) res.status(401).json({ message: err.msg });
-
+  .put([param('title').notEmpty().isString().withMessage('잘못된 채널명 입니다.'), validate], (req, res, next) => {
     const userId = req.session.userId;
     if (!userId) {
       return res.status(401).send(`
